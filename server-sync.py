@@ -1,55 +1,82 @@
-import socket
-import os
+import socket, os
 
 HOST = '0.0.0.0'
 PORT = 5000
 FILES_DIR = 'files'
+END = b"<END_OF_FILE>"
 
 os.makedirs(FILES_DIR, exist_ok=True)
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((HOST, PORT))
-server.listen(5)
+def recv_line(conn):
+    data = b""
+    while not data.endswith(b"\n"):
+        chunk = conn.recv(1)
+        if not chunk:
+            return None
+        data += chunk
+    return data.decode().strip()
 
-print("Server Sync running...")
+def recv_exact(conn, size):
+    data = b""
+    while len(data) < size:
+        chunk = conn.recv(min(1024, size - len(data)))
+        if not chunk:
+            break
+        data += chunk
+    return data
+
+server = socket.socket()
+server.bind((HOST, PORT))
+server.listen()
+
+print("Sync server running...")
 
 while True:
-    conn, addr = server.accept()
-    print(f"Connected: {addr}")
+    conn, _ = server.accept()
 
     while True:
-        data = conn.recv(1024).decode()
-        if not data:
+        line = recv_line(conn)
+        if not line:
             break
 
-        if data == "/list":
-            files = "\n".join(os.listdir(FILES_DIR))
-            conn.send(files.encode())
+        if line == "/list":
+            files = os.listdir(FILES_DIR)
+            conn.sendall(("\n".join(files) + "\n").encode())
 
-        elif data.startswith("/upload"):
-            _, filename = data.split()
+        elif line.startswith("/upload"):
+            _, filename = line.split()
+
+            buffer = b""
+
+            while True:
+                chunk = conn.recv(1024)
+                buffer += chunk
+
+                if END in buffer:
+                    file_data, _ = buffer.split(END, 1)
+                    break
+
             with open(os.path.join(FILES_DIR, filename), "wb") as f:
-                while True:
-                    chunk = conn.recv(1024)
-                    if chunk == b"EOF":
-                        break
-                    f.write(chunk)
-            conn.send(b"Upload complete")
+                f.write(file_data)
 
-        elif data.startswith("/download"):
-            _, filename = data.split()
+            conn.sendall(b"OK\n")
+
+        elif line.startswith("/download"):
+            _, filename = line.split()
             path = os.path.join(FILES_DIR, filename)
 
             if not os.path.exists(path):
-                conn.send(b"ERROR")
+                conn.sendall(b"ERROR\n")
             else:
-                conn.send(b"OK")
+                conn.sendall(b"OK\n")
+
                 with open(path, "rb") as f:
                     while chunk := f.read(1024):
-                        conn.send(chunk)
-                conn.send(b"EOF")
+                        conn.sendall(chunk)
+
+                conn.sendall(END)
 
         else:
-            conn.send(f"ECHO: {data}".encode())
+            conn.sendall(("ECHO: " + line + "\n").encode())
 
     conn.close()

@@ -15,7 +15,7 @@ Link ditaruh di bawah ini
 
 ## Penjelasan Program
 
-## 📁 Struktur Project
+### 📁 Struktur Project
 
 ```id="7w9aqo"
 .
@@ -29,9 +29,9 @@ Link ditaruh di bawah ini
 
 ---
 
-## ⚙️ Cara Kerja
+### ⚙️ Cara Kerja
 
-### 🔹 Protokol Komunikasi
+#### 🔹 Protokol Komunikasi
 
 Karena TCP bersifat **stream-based**, digunakan protokol khusus:
 
@@ -48,15 +48,15 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
 
 ---
 
-## 🖥️ Client (`client.py`)
+### 🖥️ Client (`client.py`)
 
-### Fungsi:
+#### Fungsi:
 
 * Mengirim command ke server
 * Menerima broadcast message
 * Menangani upload dan download file
 
-### Alur Kerja:
+#### Alur Kerja:
 
 1. Client terhubung ke server melalui TCP socket
 2. Menjalankan thread receiver untuk menerima pesan
@@ -67,20 +67,20 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
    * `/download` → menerima file hingga delimiter
    * selain command → broadcast message
 
-### Catatan:
+#### Catatan:
 
 * Menggunakan **single socket reader** untuk menghindari race condition
 * Memisahkan penanganan data teks dan data biner
 
 ---
 
-## 🧵 Server Thread (`server-thread.py`)
+### 🧵 Server Thread (`server-thread.py`)
 
-### Model:
+#### Model:
 
 * Satu thread untuk setiap client
 
-### Alur Kerja:
+#### Alur Kerja:
 
 1. Menerima koneksi client
 2. Membuat thread baru
@@ -91,7 +91,7 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
    * `/download` → kirim file + delimiter
    * lainnya → broadcast ke client lain
 
-### Karakteristik:
+#### Karakteristik:
 
 * ✅ Mudah diimplementasikan
 * ✅ Mendukung concurrency
@@ -99,17 +99,17 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
 
 ---
 
-## 🧍 Server Sync (`server-sync.py`)
+### 🧍 Server Sync (`server-sync.py`)
 
-### Model:
+#### Model:
 
 * Hanya melayani satu client dalam satu waktu
 
-### Alur Kerja:
+#### Alur Kerja:
 
 * Server menyelesaikan satu client sebelum menerima client berikutnya
 
-### Karakteristik:
+#### Karakteristik:
 
 * ✅ Sederhana
 * ❌ Blocking
@@ -117,13 +117,13 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
 
 ---
 
-## ⚡ Server Select (`server-select.py`)
+### ⚡ Server Select (`server-select.py`)
 
-### Model:
+#### Model:
 
 * I/O multiplexing menggunakan `select`
 
-### Alur Kerja:
+#### Alur Kerja:
 
 1. Memantau banyak socket sekaligus
 2. Menggunakan buffer untuk setiap client
@@ -133,7 +133,7 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
    * `cmd` → membaca command
    * `upload` → menerima file
 
-### Karakteristik:
+#### Karakteristik:
 
 * ✅ Lebih efisien dari thread
 * ✅ Non-blocking
@@ -141,17 +141,17 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
 
 ---
 
-## ⚡ Server Poll (`server-poll.py`)
+### ⚡ Server Poll (`server-poll.py`)
 
-### Model:
+#### Model:
 
 * Event-driven menggunakan `poll`
 
-### Alur Kerja:
+#### Alur Kerja:
 
 * Mirip dengan `select`, tetapi menggunakan event berbasis file descriptor
 
-### Karakteristik:
+#### Karakteristik:
 
 * ✅ Lebih scalable dibanding select
 * ✅ Cocok untuk banyak client
@@ -159,7 +159,7 @@ Karena TCP bersifat **stream-based**, digunakan protokol khusus:
 
 ---
 
-## 🔁 Perbandingan Server
+### 🔁 Perbandingan Server
 
 | Server | Concurrency | Kompleksitas | Skalabilitas |
 | ------ | ----------- | ------------ | ------------ |

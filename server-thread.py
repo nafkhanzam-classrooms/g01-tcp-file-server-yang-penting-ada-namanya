@@ -1,74 +1,98 @@
-import socket
-import threading
-import os
+import socket, threading, os
 
 HOST = '0.0.0.0'
 PORT = 5000
 FILES_DIR = 'files'
-
-clients = []
+END = b"<END_OF_FILE>"
 
 os.makedirs(FILES_DIR, exist_ok=True)
+clients = []
+
+# helper
+def recv_line(conn):
+    data = b""
+    while not data.endswith(b"\n"):
+        chunk = conn.recv(1)
+        if not chunk:
+            return None
+        data += chunk
+    return data.decode().strip()
+
+def recv_exact(conn, size):
+    data = b""
+    while len(data) < size:
+        chunk = conn.recv(min(1024, size - len(data)))
+        if not chunk:
+            break
+        data += chunk
+    return data
 
 def broadcast(msg, sender):
     for c in clients:
         if c != sender:
-            c.send(msg)
+            try:
+                c.sendall((msg + "\n").encode())
+            except:
+                pass
 
-def handle_client(conn):
+def handle(conn):
     clients.append(conn)
 
     while True:
-        try:
-            data = conn.recv(1024).decode()
-            if not data:
-                break
-
-            if data == "/list":
-                files = "\n".join(os.listdir(FILES_DIR))
-                conn.send(files.encode())
-
-            elif data.startswith("/upload"):
-                _, filename = data.split()
-                with open(os.path.join(FILES_DIR, filename), "wb") as f:
-                    while True:
-                        chunk = conn.recv(1024)
-                        if chunk == b"EOF":
-                            break
-                        f.write(chunk)
-                conn.send(b"Upload done")
-
-            elif data.startswith("/download"):
-                _, filename = data.split()
-                path = os.path.join(FILES_DIR, filename)
-
-                if not os.path.exists(path):
-                    conn.send(b"ERROR")
-                else:
-                    conn.send(b"OK")
-                    with open(path, "rb") as f:
-                        while chunk := f.read(1024):
-                            conn.send(chunk)
-                    conn.send(b"EOF")
-
-            else:
-                broadcast(data.encode(), conn)
-
-        except:
+        line = recv_line(conn)
+        if not line:
             break
+
+        if line == "/list":
+            files = os.listdir(FILES_DIR)
+            response = "\n".join(files) if files else "(empty)"
+            conn.sendall((response + "\n").encode())
+
+        elif line.startswith("/upload"):
+            _, filename = line.split()
+
+            buffer = b""
+
+            while True:
+                chunk = conn.recv(1024)
+                buffer += chunk
+
+                if END in buffer:
+                    file_data, _ = buffer.split(END, 1)
+                    break
+
+            with open(os.path.join(FILES_DIR, filename), "wb") as f:
+                f.write(file_data)
+
+            conn.sendall(b"OK\n")
+
+        elif line.startswith("/download"):
+            _, filename = line.split()
+            path = os.path.join(FILES_DIR, filename)
+
+            if not os.path.exists(path):
+                conn.sendall(b"ERROR\n")
+            else:
+                conn.sendall(b"OK\n")
+
+                with open(path, "rb") as f:
+                    while chunk := f.read(1024):
+                        conn.sendall(chunk)
+
+                conn.sendall(END)
+
+        else:
+            broadcast(line, conn)
 
     clients.remove(conn)
     conn.close()
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server = socket.socket()
 server.bind((HOST, PORT))
 server.listen()
 
-print("Thread Server running...")
+print("Thread server running...")
 
 while True:
-    conn, addr = server.accept()
-    print("Connected:", addr)
-
-    thread = threading.Thread(target=handle_client, args=(conn,))
-    thread.start()
+    conn, _ = server.accept()
+    threading.Thread(target=handle, args=(conn,)).start()

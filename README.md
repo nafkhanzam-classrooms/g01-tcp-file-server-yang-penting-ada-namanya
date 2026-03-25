@@ -16,3 +16,6 @@ Link ditaruh di bawah ini
 ## Penjelasan Program
 
 ## Screenshot Hasil
+
+Command list, upload, download, and broadcast
+<img width="1920" height="1080" alt="Screenshot (185)" src="https://github.com/user-attachments/assets/59825625-b264-4a34-aa4c-d191bc3c44f8" />
